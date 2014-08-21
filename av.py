@@ -1,16 +1,11 @@
 from __future__ import division
 import random
 import numpy as np
-import math
 
 def norm(x):
     "Returns the norm of the vector `x`."
     return np.sqrt((x*x).sum(-1))
 
-def normalize(x):
-    "Returns unit vectors in the direction of `x`."
-    x = np.atleast_2d(np.asarray(x, dtype=float))
-    return (x/norm(x)[:,np.newaxis]).squeeze()
 def uniform_sphere(size=None, dtype=np.double):
     """
     Generate random points isotropically distributed across the unit sphere.
@@ -39,46 +34,47 @@ def uniform_sphere(size=None, dtype=np.double):
 
     return points
 
-def foo(r, l, x, c):
-    return c*r**x*np.exp(-(R-r)/l)
-
 def bar(r):
     from scipy.special import expn
     x1 = (R-r)/L
     x2 = (r+R)/L
     return -expn(1,x1) + expn(1,x2)
 
-def fit_gauss(hist,bins):
-    from scipy.optimize import fmin
-    bincenters = (bins[1:] + bins[:-1])/2
-    #hist, _ = np.histogram(x,bins)
-    hist_sigma = hist.copy()
-    hist_sigma[hist == 0] = 1
-    def foo(args):
-        l, x, c = args
-        pdf = c*bincenters**np.abs(x)*np.exp(-(R-bincenters)/l)#norm.pdf(bincenters,mu,std)
-        return np.sum((pdf-hist)**2/hist_sigma)
+def baz(r):
+    from scipy.special import expn
+    x1 = (R-r)/L
+    x2 = (r+R)/L
+    return r*(-expn(1,x1) + expn(1,x2))
 
-    return fmin(foo,[0.1,0,1000],maxfun=1e6)
-
-L = 1
-R = 100
+# scattering length
+L = 26.3e-2
+# sphere radius
+R = 6
+# number of monte carlo events
 N = 10000000
-x = uniform_sphere(N)*R + np.random.exponential(L,size=N)[:,np.newaxis]*uniform_sphere(N)
 
-r = norm(x)
+if __name__ == '__main__':
+    import matplotlib.pyplot as plt
 
-import matplotlib.pyplot as plt
+    # pick random points on a sphere of radius R, draw an isotropic direction
+    # and move the points a distance drawn from an exponential with mean L
+    x = uniform_sphere(N)*R + np.random.exponential(L,size=N)[:,np.newaxis]*uniform_sphere(N)
 
-bins = np.linspace(90,100,100)
-dx = bins[1] - bins[0]
-bincenters = (bins[1:] + bins[:-1])/2
-hist, _ = np.histogram(r,bins)
-#np.savetxt('hist.txt',np.dstack((100-bincenters[::-1],hist[::-1])).squeeze())
-#result = fit_gauss(hist,bins)
-#print result
-y = bar(bincenters)#foo(bincenters,*result)
-y /= y.sum()*dx
-plt.hist(r, bins=bins, normed=True)
-plt.plot(bincenters,y,lw=2)
-plt.show()
+    # get the distance from the center
+    r = norm(x)
+
+    bins = np.linspace(5,6,1000)
+    dx = bins[1] - bins[0]
+    bincenters = (bins[1:] + bins[:-1])/2
+    hist, _ = np.histogram(r,bins)
+
+    y1 = bar(bincenters)
+    y1 /= y1.sum()*dx
+    y2 = baz(bincenters)
+    y2 /= y2.sum()*dx
+
+    plt.hist(r, bins=bins, normed=True)
+    plt.plot(bincenters,y1,lw=2)
+    plt.plot(bincenters,y2,lw=2)
+
+    plt.show()
